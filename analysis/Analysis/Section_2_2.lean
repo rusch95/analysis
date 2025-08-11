@@ -256,25 +256,45 @@ example (a b:Nat): a+b ≥ a+b := by rfl
 /-- (b) (Order is transitive).  The `obtain` tactic will be useful here.
     Compare with Mathlib's `Nat.le_trans`. -/
 theorem Nat.ge_trans {a b c:Nat} (hab: a ≥ b) (hbc: b ≥ c) : a ≥ c := by
-  rw [Nat.ge_iff_le, Nat.le_iff] at hab
-  rw [Nat.ge_iff_le, Nat.le_iff] at hbc
   obtain ⟨n1, h1⟩ := hab
   obtain ⟨n2, h2⟩ := hbc
-  rw [h2] at h1
-  rw [h1]
-  rw [Nat.ge_iff_le, Nat.le_iff]
-  exists n1 + n2
-  rw [add_assoc, add_comm n2 n1]
+  use n2 + n1
+  rw [h1, h2, add_assoc]
 
 theorem Nat.le_trans {a b c:Nat} (hab: a ≤ b) (hbc: b ≤ c) : a ≤ c := Nat.ge_trans hbc hab
 
 /-- (c) (Order is anti-symmetric). Compare with Mathlib's `Nat.le_antisymm`. -/
 theorem Nat.ge_antisymm {a b:Nat} (hab: a ≥ b) (hba: b ≥ a) : a = b := by
-  sorry
+  obtain ⟨n1, h1⟩ := hab
+  obtain ⟨n2, h2⟩ := hba
+  rw [h1] at h2
+  rw [add_assoc] at h2
+  have h3 : n2 + n1 = 0 := by
+    have : b + (n2 + n1) = b + 0 := by
+      rw [add_zero]
+      rw [add_comm n1 n2] at h2
+      exact h2.symm
+    exact add_left_cancel _ _ _ this
+  obtain ⟨hn2, hn1⟩ := add_eq_zero _ _ h3
+  rw [h1, hn1, add_zero]
 
 /-- (d) (Addition preserves order).  Compare with Mathlib's `Nat.add_le_add_right`. -/
 theorem Nat.add_ge_add_right (a b c:Nat) : a ≥ b ↔ a + c ≥ b + c := by
-  sorry
+  constructor
+  · -- Forward direction: a ≥ b → a + c ≥ b + c
+    intro h1
+    obtain ⟨n, h2⟩  := h1
+    rw [h2]
+    exists n
+    rw [add_assoc, add_comm n c, ← add_assoc]
+  · -- Backward direction: a + c ≥ b + c → a ≥ b
+    intro h1
+    obtain ⟨ n, h2 ⟩ := h1
+    rw [add_comm, add_comm b c] at h2
+    rw [add_assoc] at h2
+    apply add_left_cancel at h2
+    rw [h2]
+    exists n
 
 /-- (d) (Addition preserves order).  Compare with Mathlib's `Nat.add_le_add_left`.  -/
 theorem Nat.add_ge_add_left (a b c:Nat) : a ≥ b ↔ c + a ≥ c + b := by
@@ -287,9 +307,54 @@ theorem Nat.add_le_add_right (a b c:Nat) : a ≤ b ↔ a + c ≤ b + c := add_ge
 /-- (d) (Addition preserves order).  Compare with Mathlib's `Nat.add_le_add_left`.  -/
 theorem Nat.add_le_add_left (a b c:Nat) : a ≤ b ↔ c + a ≤ c + b := add_ge_add_left _ _ _
 
+theorem Nat.le_add_right (a b:Nat) : a ≤ a + b := by
+  use b
+
+theorem Nat.lt_add_right (a b:Nat) (hb: b ≠ 0) : a < a + b := by
+  rw [lt_iff]
+  constructor
+  · exact le_add_right a b
+  · intro h
+    have : a + b = a + 0 := by rw [← h, add_zero]
+    have : b = 0 := add_left_cancel a b 0 this
+    contradiction
+
 /-- (e) a < b iff a++ ≤ b.  Compare with Mathlib's `Nat.succ_le_iff`. -/
 theorem Nat.lt_iff_succ_le (a b:Nat) : a < b ↔ a++ ≤ b := by
-  sorry
+  constructor
+  . intro h
+    obtain ⟨ h1, h2 ⟩ := h
+    obtain ⟨ n, h3 ⟩ := h1
+    -- Since a ≠ b and b = a + n, we must have n ≠ 0
+    have h0 : n ≠ 0 := by
+      intro hn_zero
+      rw [hn_zero, add_zero] at h3
+      rw [h3] at h2
+      contradiction
+    -- Since n ≠ 0, we have n = n2++ for some n2
+    have ⟨n2, hn⟩ : ∃ n2 : Nat, n = n2++ := by
+      cases n with
+      | zero      => cases h0 rfl            -- contradiction, closes the goal
+      | succ n2   => exact ⟨n2, rfl⟩         -- witness is the predecessor
+    -- Now b = a + n2++, so a++ = a + 1 ≤ a + n2++ = b
+    rw [h3, hn]
+    rw [succ_eq_add_one]
+    -- We need to show a + 1 ≤ a + n2++
+    -- Since n2++ = n2 + 1, we have a + n2++ = a + (n2 + 1)
+    -- So we need a + 1 ≤ a + (n2 + 1), which is equivalent to 1 ≤ n2 + 1
+    -- This is true since we can use n2 as witness
+    rw [succ_eq_add_one]
+    use n2
+    rw [add_assoc, add_comm n2 1]
+
+  intro h
+  obtain ⟨n, h1⟩ := h
+  rw [h1]
+  rw [succ_eq_add_one, add_assoc]
+  have h2 : 1 + n ≠ 0 := by
+    rw [add_comm, <- succ_eq_add_one]
+    simp
+  exact lt_add_right a (1 + n) h2
 
 /-- (f) a < b if and only if b = a + d for positive d. -/
 theorem Nat.lt_iff_add_pos (a b:Nat) : a < b ↔ ∃ d:Nat, d.IsPos ∧ b = a + d := by
