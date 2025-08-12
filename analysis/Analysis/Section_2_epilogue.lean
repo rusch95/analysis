@@ -50,12 +50,19 @@ abbrev Chapter2.Nat.map_add : ∀ (n m : Nat), (n + m).toNat = n.toNat + m.toNat
   intro n m
   induction' n with n hn
   · rw [show zero = 0 from rfl, zero_add, _root_.Nat.zero_add]
-  sorry
+  rw [succ_add, succ_toNat, hn]
+  rw[ succ_toNat]
+  ring
 
 /-- The conversion preserves multiplication. -/
 abbrev Chapter2.Nat.map_mul : ∀ (n m : Nat), (n * m).toNat = n.toNat * m.toNat := by
   intro n m
-  sorry
+  induction' n with n hn
+  · rw [show zero = 0 from rfl, zero_mul, _root_.Nat.zero_mul]
+  rw [succ_mul, succ_toNat]
+  rw [map_add]
+  rw [hn]
+  ring
 
 /-- The conversion preserves order. -/
 abbrev Chapter2.Nat.map_le_map_iff : ∀ {n m : Nat}, n.toNat ≤ m.toNat ↔ n ≤ m := by
